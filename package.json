@@ -1,0 +1,27 @@
+{
+  "name": "hyle-p256-benchmark",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "wasm": "wasm-pack build --target web"
+  },
+  "dependencies": {
+    "@aztec/bb.js": "^0.69.1",
+    "@noir-lang/noir_js": "^1.0.0-beta.0",
+    "@noir-lang/noir_wasm": "^1.0.0-beta.0",
+    "vite": "^5.0.0",
+    "vite-plugin-top-level-await": "^1.4.0",
+    "vite-plugin-wasm": "^3.3.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "description": "",
+  "devDependencies": {
+    "vite-plugin-node-polyfills": "^0.22.0"
+  }
+}

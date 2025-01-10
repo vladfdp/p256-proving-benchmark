@@ -1,0 +1,6 @@
+[package]
+name = "noir_p256"
+type = "bin"
+authors = [""]
+
+[dependencies]

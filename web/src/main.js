@@ -114,9 +114,24 @@ document.getElementById('runButton').addEventListener('click', run);
 
 
 async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTimes, proofGenerationTimes, verificationTimes) {
+    // Add warm-up phase
+    const WARM_UP_ITERATIONS = 1;
+    console.log("Performing warm-up runs...");
+    for (let i = 0; i < WARM_UP_ITERATIONS; i++) {
+        document.getElementById('result').textContent = `warming up ${i+1}/${WARM_UP_ITERATIONS}`;
+        const keyPair = new KeyPair();
+        const signatureObj = keyPair.sign(messageBytes);
+        const publicKey = keyPair.get_public_key();
+        const formatted_signature = formatSignature(signatureObj, publicKey);
+        
+        const { witness } = await noir.execute(formatted_signature);
+        const proof = await backend.generateProof(witness);
+        await backend.verifyProof(proof);
+    }
+
+    console.log("Starting actual measurements...");
+    // Rest of the existing benchmark code
     for (let i = 0; i < N; i++) {
-
-
         document.getElementById('result').textContent = `running ${i}/${N}`;
         // Create a keypair
         const keyPair = new KeyPair();
@@ -126,13 +141,7 @@ async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTim
 
 
         // Convert message hash and signature components to the format needed for the circuit
-        const formatted_signature = {
-            hashed_message: Array.from(signatureObj.message_hash).map(b => b.toString()),
-            pub_key_x: Array.from(publicKey.slice(1, 33)).map(b => b.toString()), // First byte is always 04, so skip it
-            pub_key_y: Array.from(publicKey.slice(33, 65)).map(b => b.toString()), // Take last 32 bytes for y
-            signature: normalizeSignature([...Array.from(signatureObj.r).map(b => b.toString()), 
-                    ...Array.from(signatureObj.s).map(b => b.toString())]) // Normalize concatenated r and s
-        };
+        const formatted_signature = formatSignature(signatureObj, publicKey);
 
         // Measure witness generation time
         const witnessStartTime = performance.now();
@@ -155,7 +164,15 @@ async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTim
 }
 
 
-
+function formatSignature(signatureObj, publicKey) {
+    return {
+        hashed_message: Array.from(signatureObj.message_hash).map(b => b.toString()),
+        pub_key_x: Array.from(publicKey.slice(1, 33)).map(b => b.toString()), // First byte is always 04, so skip it
+        pub_key_y: Array.from(publicKey.slice(33, 65)).map(b => b.toString()), // Take last 32 bytes for y
+        signature: normalizeSignature([...Array.from(signatureObj.r).map(b => b.toString()),
+                ...Array.from(signatureObj.s).map(b => b.toString())]) // Normalize concatenated r and s
+    };
+}
 
 
     // If s > halfOrder, compute n - s to get the signature in the normalized form

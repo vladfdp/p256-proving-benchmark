@@ -113,7 +113,7 @@ document.getElementById('runButton').addEventListener('click', run);
 
 
 
-async function runBenchmark(backend, noir, N, messageBytes, proofGenerationTimes, witnessGenerationTimes, verificationTimes) {
+async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTimes, proofGenerationTimes, verificationTimes) {
     for (let i = 0; i < N; i++) {
 
 

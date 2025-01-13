@@ -2,8 +2,10 @@
 import init, { KeyPair, verify_signature } from '../../pkg/p_256_benchmark';
 
 
+
 import circuit from '../../noir_p256/target/noir_p256.json';
-import { UltraHonkBackend } from '@aztec/bb.js';
+import { UltraHonkBackend, UltraPlonkBackend } from '@aztec/bb.js';
+
 import { Noir } from '@noir-lang/noir_js';
 
 import initNoirC from "@noir-lang/noirc_abi";
@@ -19,75 +21,169 @@ await Promise.all([
 
 async function run() {
     
-    await init();
+    try {
+        await init();
 
-    const message = "Hello world";
-    const messageBytes = new TextEncoder().encode(message);
-    
-    // Create a keypair
-    const keyPair = new KeyPair();
-    
-    // Sign the message
-    const signatureObj = keyPair.sign(messageBytes);
-    const publicKey = keyPair.get_public_key();
-    
-    // Verify using the verify method
-    // const isValidUsingKeypair = keyPair.verify(messageBytes, signatureObj.r, signatureObj.s);
-    // console.log("Verification using keypair:", isValidUsingKeypair);
-    
-    // Verify using the standalone verify function
-    const isValidUsingFunction = verify_signature(messageBytes, signatureObj.r, signatureObj.s, publicKey);
-    console.log("Verification using function:", isValidUsingFunction);
-    
-    // // Log the details
-    // console.log({
-    //     message,
-    //     signatureR: new Uint8Array(signatureObj.r),
-    //     signatureS: new Uint8Array(signatureObj.s),
-    //     message_hash: new Uint8Array(signatureObj.message_hash),
-    //     publicKey: new Uint8Array(publicKey),
-    // });
+        document.getElementById('result').textContent = `running`;
 
+        const message = "Hello world";  //Maybe add an option to input the message
+        const messageBytes = new TextEncoder().encode(message);
 
-    const program = circuit;
-    const noir = new Noir(program);
-    const backend = new UltraHonkBackend(program.bytecode);
+        //Check the checkboxes
+        const useUltraHonk = document.getElementById('ultrahonk').checked;
+        const useUltraPlonk = document.getElementById('ultraplonk').checked;
+        const sampleSize = document.getElementById('sampleSize').value;
 
-    const static_signature = {
-        hashed_message : ["50", "142", "158", "83", "62", "232", "250", "44", "23", "210", "126", "149", "170", "154", "194", "32", "89", "8", "16", "46", "181", "230", "203", "65", "34", "143", "61", "95", "179", "230", "55", "74"],
-        pub_key_x : ["229", "80", "248", "40", "178", "157", "0", "151", "125", "99", "194", "161", "246", "56", "195", "124", "10", "39", "133", "89", "173", "41", "223", "123", "129", "219", "37", "165", "174", "207", "190", "212"],
-        pub_key_y : ["146", "144", "173", "73", "138", "38", "167", "200", "101", "70", "250", "153", "248", "62", "71", "11", "79", "236", "221", "195", "215", "118", "228", "154", "102", "191", "190", "38", "135", "254", "243", "137"],
-        signature : ["26", "128", "35", "208", "169", "226", "91", "130", "140", "232", "102", "221", "97", "196", "12", "35", "143", "149", "6", "225", "100", "160", "217", "188", "101", "113", "5", "240", "169", "9", "11", "146", "66", "11", "30", "105", "120", "30", "57", "187", "176", "159", "76", "227", "160", "206", "64", "147", "22", "0", "133", "172", "81", "67", "152", "244", "15", "244", "142", "70", "153", "23", "109", "171"]
-    };
+        const program = circuit;
+        const noir = new Noir(program);
+        const UHbackend = new UltraHonkBackend(program.bytecode);
+        const UPbackend = new UltraPlonkBackend(program.bytecode);
 
+        const N = sampleSize; // Number of iterations
 
-    console.log(static_signature)
+        const results = {
+            'UltraHonk': {
+                witnessGenerationTimes: [],
+                proofGenerationTimes: [], 
+                verificationTimes: []
+            },
+            'UltraPlonk': {
+                witnessGenerationTimes: [],
+                proofGenerationTimes: [],
+                verificationTimes: []
+            }
+        };
 
-    
-    const { witness } = await noir.execute(static_signature);
-    
+        if (useUltraHonk) {
+            let witnessGenerationTimes = [];
+            let proofGenerationTimes = [];
+            let verificationTimes = [];
+            await runBenchmark(UHbackend, noir, N, messageBytes, witnessGenerationTimes, proofGenerationTimes, verificationTimes);
+            results['UltraHonk'].witnessGenerationTimes = witnessGenerationTimes;
+            results['UltraHonk'].proofGenerationTimes = proofGenerationTimes;
+            results['UltraHonk'].verificationTimes = verificationTimes;
+        }
 
+        if (useUltraPlonk) {
+            let witnessGenerationTimes = [];
+            let proofGenerationTimes = [];
+            let verificationTimes = [];
+            await runBenchmark(UPbackend, noir, N, messageBytes, witnessGenerationTimes, proofGenerationTimes, verificationTimes);
+            results['UltraPlonk'].witnessGenerationTimes = witnessGenerationTimes;
+            results['UltraPlonk'].proofGenerationTimes = proofGenerationTimes;
+            results['UltraPlonk'].verificationTimes = verificationTimes;
+        }
 
-
-
-
-
-    const proof = await backend.generateProof(witness);
-    console.log(proof);
-
-    const isProofValid = await backend.verifyProof(proof);
+        console.log(results);
 
 
+        let resultText = '';
+        if (!useUltraHonk && !useUltraPlonk) {
+            resultText = 'No backend selected';
+        } else {
+            if (useUltraHonk) {
+                const uhWitnessAvg = results.UltraHonk.witnessGenerationTimes.reduce((a,b) => a + b, 0) / N;
+                const uhProofAvg = results.UltraHonk.proofGenerationTimes.reduce((a,b) => a + b, 0) / N;
+                const uhVerifyAvg = results.UltraHonk.verificationTimes.reduce((a,b) => a + b, 0) / N;
+                resultText += `UltraHonk - Witness: ${uhWitnessAvg.toFixed(2)}ms, Proof: ${uhProofAvg.toFixed(2)}ms, Verify: ${uhVerifyAvg.toFixed(2)}ms\n`;
+            }
+            if (useUltraPlonk) {
+                const upWitnessAvg = results.UltraPlonk.witnessGenerationTimes.reduce((a,b) => a + b, 0) / N;
+                const upProofAvg = results.UltraPlonk.proofGenerationTimes.reduce((a,b) => a + b, 0) / N;
+                const upVerifyAvg = results.UltraPlonk.verificationTimes.reduce((a,b) => a + b, 0) / N;
+                resultText += `UltraPlonk - Witness: ${upWitnessAvg.toFixed(2)}ms, Proof: ${upProofAvg.toFixed(2)}ms, Verify: ${upVerifyAvg.toFixed(2)}ms`;
+            }
+        }
+        //Update result DOM
+        document.getElementById('result').textContent = resultText;
+        
+
+        
+
+    } catch (error) {
 
 
-
-    // // Get the span element and update its content
-    document.getElementById('result').textContent = `it worked?: ${isProofValid}`;
+        console.error("An error occurred:", error);
+    }
 }
 
 document.getElementById('runButton').addEventListener('click', run);
 
 
+
+
+
+async function runBenchmark(backend, noir, N, messageBytes, proofGenerationTimes, witnessGenerationTimes, verificationTimes) {
+    for (let i = 0; i < N; i++) {
+
+
+        document.getElementById('result').textContent = `running ${i}/${N}`;
+        // Create a keypair
+        const keyPair = new KeyPair();
+        // Sign the message
+        const signatureObj = keyPair.sign(messageBytes);
+        const publicKey = keyPair.get_public_key();
+
+
+        // Convert message hash and signature components to the format needed for the circuit
+        const formatted_signature = {
+            hashed_message: Array.from(signatureObj.message_hash).map(b => b.toString()),
+            pub_key_x: Array.from(publicKey.slice(1, 33)).map(b => b.toString()), // First byte is always 04, so skip it
+            pub_key_y: Array.from(publicKey.slice(33, 65)).map(b => b.toString()), // Take last 32 bytes for y
+            signature: normalizeSignature([...Array.from(signatureObj.r).map(b => b.toString()), 
+                    ...Array.from(signatureObj.s).map(b => b.toString())]) // Normalize concatenated r and s
+        };
+
+        // Measure witness generation time
+        const witnessStartTime = performance.now();
+        const { witness } = await noir.execute(formatted_signature);
+        const witnessEndTime = performance.now();
+        witnessGenerationTimes.push(witnessEndTime - witnessStartTime);
+
+        // Measure proof generation time
+        const proofStartTime = performance.now();
+        const proof = await backend.generateProof(witness);
+        const proofEndTime = performance.now();
+        proofGenerationTimes.push(proofEndTime - proofStartTime);
+
+        // Measure verification time
+        const verifyStartTime = performance.now();
+        const isProofValid = await backend.verifyProof(proof);
+        const verifyEndTime = performance.now();
+        verificationTimes.push(verifyEndTime - verifyStartTime);
+    }
+}
+
+
+
+
+
+    // If s > halfOrder, compute n - s to get the signature in the normalized form
+function normalizeSignature(signature) {
+
+    const r = signature.slice(0, 32);
+    const s = signature.slice(32);
+    
+    const sBigInt = s.reduce((acc, byte) => (acc << 8n) + BigInt(byte), 0n);
+    
+    // P256 curve order
+    const n = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551n;
+    const halfOrder = n >> 1n;
+    
+    if (sBigInt > halfOrder) {
+        let newS = n - sBigInt;
+        const normalizedS = new Array(32).fill('0');
+        let temp = newS;
+        for (let i = 31; i >= 0; i--) {
+            normalizedS[i] = (temp & 0xFFn).toString();
+            temp >>= 8n;
+        }
+        
+        return [...r.map(String), ...normalizedS];
+    }
+    
+    return signature.map(String);
+}
 
 function toHexString(bytes) {
     return Array.from(bytes)

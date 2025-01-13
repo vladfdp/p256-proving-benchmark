@@ -40,7 +40,6 @@ Thumbs.db
 
 # Noir specific
 /target/
-noir_p256/target/
 
 # Test coverage
 coverage/

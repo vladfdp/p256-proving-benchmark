@@ -46,7 +46,6 @@ impl KeyPair {
         hasher.update(message);
         let sha256_hash = hasher.finalize().to_vec();
         
-        // Now sign using the explicit hash to verify what the library uses
         let signature: Signature = self.signing_key.sign(message);
         
         let components = SignatureComponents {
@@ -61,7 +60,7 @@ impl KeyPair {
     pub fn get_public_key(&self) -> Vec<u8> {
         // Export the public key in SEC1 encoded format
         self.signing_key.verifying_key()
-            .to_encoded_point(false)
+            .to_encoded_point(false) //this gives us the uncompressed format
             .as_bytes()
             .to_vec()
     }
@@ -113,16 +112,3 @@ pub fn verify_signature(message: &[u8], r: &[u8], s: &[u8], public_key: &[u8]) -
     }
     false
 }
-
-// Helper function to generate a test signature // WILL FIX LATER but right now it's wrong format stuf
-// #[wasm_bindgen]
-// pub fn generate_test_signature(message: &str) -> JsValue {
-//     let keypair = KeyPair::new();
-//     let signature = keypair.sign(message.as_bytes());
-//     let public_key = keypair.get_public_key();
-    
-//     let result = js_sys::Object::new();
-//     js_sys::Reflect::set(&result, &"signature".into(), &js_sys::Uint8Array::from(&signature[..]).into()).unwrap();
-//     js_sys::Reflect::set(&result, &"publicKey".into(), &js_sys::Uint8Array::from(&public_key[..]).into()).unwrap();
-//     result.into()
-// }

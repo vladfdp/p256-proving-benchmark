@@ -7,10 +7,16 @@ export default defineConfig({
     wasm(),
     topLevelAwait()
   ],
+  server: {
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
+  },
   root: 'web',
   build: {
     target: 'esnext',
-    outDir: '../dist'
+    outDir: '../dist',
   },
   optimizeDeps: {
     exclude: [

@@ -33,11 +33,18 @@ async function run() {
         const useUltraHonk = document.getElementById('ultrahonk').checked;
         const useUltraPlonk = document.getElementById('ultraplonk').checked;
         const sampleSize = document.getElementById('sampleSize').value;
+        const numThreads = document.getElementById('numThreads').value;
 
         const program = circuit;
         const noir = new Noir(program);
-        const UHbackend = new UltraHonkBackend(program.bytecode);
-        const UPbackend = new UltraPlonkBackend(program.bytecode);
+        
+        if (crossOriginIsolated) {
+            console.log('Multithreading is enabled!');
+        } else {
+            console.warn('Multithreading is not available - check COOP/COEP headers');
+        }
+        const UHbackend = new UltraHonkBackend(program.bytecode, { threads: numThreads });
+        const UPbackend = new UltraPlonkBackend(program.bytecode, { threads: numThreads });
 
         const N = sampleSize; // Number of iterations
 
@@ -74,7 +81,7 @@ async function run() {
             results['UltraPlonk'].verificationTimes = verificationTimes;
         }
 
-        console.log(results);
+        //console.log(results);
 
 
         let resultText = '';
@@ -132,7 +139,7 @@ async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTim
     console.log("Starting actual measurements...");
     // Rest of the existing benchmark code
     for (let i = 0; i < N; i++) {
-        document.getElementById('result').textContent = `running ${i}/${N}`;
+        document.getElementById('result').textContent = `running ${i+1}/${N}`;
         // Create a keypair
         const keyPair = new KeyPair();
         // Sign the message

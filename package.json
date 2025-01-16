@@ -1,5 +1,5 @@
 {
-  "name": "hyle-p256-benchmark",
+  "name": "p256-proving-benchmark",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {

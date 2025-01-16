@@ -18,13 +18,6 @@ export default defineConfig({
     target: 'esnext',
     outDir: '../dist',
   },
-  optimizeDeps: {
-    exclude: [
-      '@noir-lang/noirc_abi',
-      '@noir-lang/acvm_js',
-      '@noir-lang/noir_wasm'
-    ]
-  },
   resolve: {
     alias: {
       '@': '/src',

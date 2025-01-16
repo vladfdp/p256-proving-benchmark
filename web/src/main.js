@@ -81,8 +81,6 @@ async function run() {
             results['UltraPlonk'].verificationTimes = verificationTimes;
         }
 
-        //console.log(results);
-
 
         let resultText = '';
         if (!useUltraHonk && !useUltraPlonk) {
@@ -149,6 +147,8 @@ async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTim
 
         // Convert message hash and signature components to the format needed for the circuit
         const formatted_signature = formatSignature(signatureObj, publicKey);
+
+        console.log(messageBytes, signatureObj.r, signatureObj.s, publicKey);
 
         // Measure witness generation time
         const witnessStartTime = performance.now();
@@ -267,31 +267,3 @@ function numberToBase43Chunks(num, numChunks = 6) {
     return chunks;
 }
 
-
-
-
-
-
-
-    // Utility function for benchmarking
-export const benchmark = async (name, iterations, fn) => {
-    // Warm up phase
-    for (let i = 0; i < 5; i++) await fn();
-    
-    // Actual measurements
-    const times = [];
-    for (let i = 0; i < iterations; i++) {
-      const start = performance.now();
-      await fn();
-      const end = performance.now();
-      times.push(end - start);
-    }
-  
-    // Calculate statistics
-    const avg = times.reduce((a, b) => a + b) / times.length;
-    // const min = Math.min(...times);
-    // const max = Math.max(...times);
-    
-    return avg.toFixed(3) + "ms";
-  };
-  

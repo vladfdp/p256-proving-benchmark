@@ -9,9 +9,9 @@
     "wasm": "wasm-pack build --target web"
   },
   "dependencies": {
+    "@aztec/bb.js": "0.63.1",
     "@noir-lang/noir_js": "1.0.0-beta.0 ",
     "@noir-lang/noir_wasm": "1.0.0-beta.0",
-    "@aztec/bb.js": "0.63.1", 
     "vite": "^5.1.4",
     "vite-plugin-top-level-await": "^1.4.0",
     "vite-plugin-wasm": "^3.3.0"
@@ -22,6 +22,7 @@
   "type": "module",
   "description": "",
   "devDependencies": {
+    "vite-plugin-mkcert": "^1.17.6",
     "vite-plugin-node-polyfills": "^0.22.0"
   }
 }

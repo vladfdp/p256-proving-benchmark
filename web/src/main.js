@@ -150,11 +150,21 @@ async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTim
 
         console.log(messageBytes, signatureObj.r, signatureObj.s, publicKey);
 
+        //Record ram usage
+        if (performance.memory) {
+            console.log("Ram usage before witness generation", performance.memory.usedJSHeapSize / (1024 * 1024));
+          }
+
         // Measure witness generation time
         const witnessStartTime = performance.now();
         const { witness } = await noir.execute(formatted_signature);
         const witnessEndTime = performance.now();
         witnessGenerationTimes.push(witnessEndTime - witnessStartTime);
+
+        //Record ram usage
+        if (performance.memory) {
+            console.log("Ram usage before proof generation", performance.memory.usedJSHeapSize / (1024 * 1024));
+          }
 
         // Measure proof generation time
         const proofStartTime = performance.now();
@@ -162,11 +172,21 @@ async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTim
         const proofEndTime = performance.now();
         proofGenerationTimes.push(proofEndTime - proofStartTime);
 
+        //Record ram usage
+        if (performance.memory) {
+            console.log("Ram usage before verification", performance.memory.usedJSHeapSize / (1024 * 1024));
+          }
+
         // Measure verification time
         const verifyStartTime = performance.now();
         const isProofValid = await backend.verifyProof(proof);
         const verifyEndTime = performance.now();
         verificationTimes.push(verifyEndTime - verifyStartTime);
+
+        //Record ram usage
+        if (performance.memory) {
+            console.log("Ram usage after verification", performance.memory.usedJSHeapSize / (1024 * 1024));
+          }
     }
 }
 

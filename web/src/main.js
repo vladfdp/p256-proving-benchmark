@@ -1,5 +1,5 @@
 //import * as wasm from "p-256-benchmark";
-import init, { KeyPair, verify_signature } from '../../pkg/p_256_benchmark';
+import init, { KeyPair, verify_signature } from '../../pkg/p256_proving_benchmark';
 
 
 

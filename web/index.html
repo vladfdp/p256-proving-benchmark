@@ -1,28 +1,188 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en-US">
   <head>
     <meta charset="utf-8" />
-    <title>test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P-256 Benchmark</title>
+    <style>
+      :root {
+        --primary-color: #2563eb;
+        --primary-hover: #1d4ed8;
+        --background: #f8fafc;
+        --text: #1e293b;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        line-height: 1.5;
+        margin: 0;
+        padding: 16px;
+        background: var(--background);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 24px;
+      }
+
+      .controls {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      input[type="number"] {
+        padding: 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        width: 100%;
+      }
+
+      button {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        width: 100%;
+        max-width: 200px;
+        margin: 24px 0;
+      }
+
+      button:hover {
+        background: var(--primary-hover);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+
+      .results-table th,
+      .results-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .results-table th {
+        background: #f1f5f9;
+        font-weight: 600;
+      }
+
+      @media (max-width: 640px) {
+        .results-table {
+          display: block;
+          overflow-x: auto;
+        }
+
+        .card {
+          padding: 16px;
+        }
+
+        body {
+          padding: 8px;
+        }
+      }
+
+      .status {
+        text-align: center;
+        margin: 16px 0;
+        font-weight: 500;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
   </head>
   <body>
-    <div>
-      <input type="checkbox" id="ultrahonk" name="ultrahonk">
-      <label for="ultrahonk">UltraHonk</label>
+    <div class="container">
+      <div class="card">
+        <h1>P-256 Benchmark</h1>
+        
+        <div class="controls">
+          <div class="control-group">
+            <div class="checkbox-group">
+              <input type="checkbox" id="ultrahonk" name="ultrahonk">
+              <label for="ultrahonk">UltraHonk</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="ultraplonk" name="ultraplonk">
+              <label for="ultraplonk">UltraPlonk</label>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="numThreads">Number of Threads</label>
+            <input type="number" id="numThreads" name="numThreads" min="1" value="1">
+          </div>
+
+          <div class="control-group">
+            <label for="sampleSize">Sample Size</label>
+            <input type="number" id="sampleSize" name="sampleSize" min="1" value="1">
+          </div>
+        </div>
+
+        <button id="runButton">Run Benchmark</button>
+        
+        <div id="status" class="status hidden">Running...</div>
+
+        <table class="results-table hidden" id="resultsTable">
+          <thead>
+            <tr>
+              <th>Backend</th>
+              <th>Witness Gen (ms)</th>
+              <th>Proof Gen (ms)</th>
+              <th>Verification (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="ultrahonkRow" class="hidden">
+              <td>UltraHonk</td>
+              <td id="uh-witness">-</td>
+              <td id="uh-proof">-</td>
+              <td id="uh-verify">-</td>
+            </tr>
+            <tr id="ultraplonkRow" class="hidden">
+              <td>UltraPlonk</td>
+              <td id="up-witness">-</td>
+              <td id="up-proof">-</td>
+              <td id="up-verify">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div>
-      <input type="checkbox" id="ultraplonk" name="ultraplonk">
-      <label for="ultraplonk">UltraPlonk</label>
-    </div>
-    <div>
-      <label for="numThreads">Number of Threads:</label>
-      <input type="number" id="numThreads" name="numThreads" min="1" value="1">
-    </div>
-    <div>
-      <label for="sampleSize">Sample Size:</label>
-      <input type="number" id="sampleSize" name="sampleSize" min="1" value="1">
-    </div>
-    <button id="runButton">Run</button>
-    <p>Result: <span id="result">-</span></p>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>

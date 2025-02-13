@@ -1,15 +1,10 @@
-//import * as wasm from "p-256-benchmark";
 import init, { KeyPair, verify_signature } from '../../pkg/p256_proving_benchmark';
-
-
-
 import circuit from '../../noir_p256/target/noir_p256.json';
 import { UltraHonkBackend, UltraPlonkBackend } from '@aztec/bb.js';
-
 import { Noir } from '@noir-lang/noir_js';
-
 import initNoirC from "@noir-lang/noirc_abi";
 import initACVM from "@noir-lang/acvm_js";
+
 const acvmPath = new URL('@noir-lang/acvm_js/web/acvm_js_bg.wasm', import.meta.url);
 const noircPath = new URL('@noir-lang/noirc_abi/web/noirc_abi_wasm_bg.wasm', import.meta.url);
 
@@ -18,22 +13,32 @@ await Promise.all([
     initNoirC(fetch(noircPath))
 ]);
 
+const runButton = document.getElementById('runButton');
+const statusElement = document.getElementById('status');
+const resultsTable = document.getElementById('resultsTable');
 
 async function run() {
-    
     try {
         await init();
 
-        document.getElementById('result').textContent = `running`;
+        // Update UI state
+        runButton.disabled = true;
+        statusElement.classList.remove('hidden');
+        resultsTable.classList.add('hidden');
 
-        const message = "Hello world";  //Maybe add an option to input the message
+        const message = "Hello world";
         const messageBytes = new TextEncoder().encode(message);
 
-        //Check the checkboxes
         const useUltraHonk = document.getElementById('ultrahonk').checked;
         const useUltraPlonk = document.getElementById('ultraplonk').checked;
-        const sampleSize = document.getElementById('sampleSize').value;
-        const numThreads = document.getElementById('numThreads').value;
+        const sampleSize = parseInt(document.getElementById('sampleSize').value);
+        const numThreads = parseInt(document.getElementById('numThreads').value);
+
+        if (!useUltraHonk && !useUltraPlonk) {
+            statusElement.textContent = 'Please select at least one backend';
+            runButton.disabled = false;
+            return;
+        }
 
         const program = circuit;
         const noir = new Noir(program);
@@ -43,10 +48,9 @@ async function run() {
         } else {
             console.warn('Multithreading is not available - check COOP/COEP headers');
         }
+
         const UHbackend = new UltraHonkBackend(program.bytecode, { threads: numThreads });
         const UPbackend = new UltraPlonkBackend(program.bytecode, { threads: numThreads });
-
-        const N = sampleSize; // Number of iterations
 
         const results = {
             'UltraHonk': {
@@ -61,69 +65,53 @@ async function run() {
             }
         };
 
+        // Run benchmarks
         if (useUltraHonk) {
-            let witnessGenerationTimes = [];
-            let proofGenerationTimes = [];
-            let verificationTimes = [];
-            await runBenchmark(UHbackend, noir, N, messageBytes, witnessGenerationTimes, proofGenerationTimes, verificationTimes);
-            results['UltraHonk'].witnessGenerationTimes = witnessGenerationTimes;
-            results['UltraHonk'].proofGenerationTimes = proofGenerationTimes;
-            results['UltraHonk'].verificationTimes = verificationTimes;
+            document.getElementById('ultrahonkRow').classList.remove('hidden');
+            await runBenchmark(UHbackend, noir, sampleSize, messageBytes, results.UltraHonk);
         }
 
         if (useUltraPlonk) {
-            let witnessGenerationTimes = [];
-            let proofGenerationTimes = [];
-            let verificationTimes = [];
-            await runBenchmark(UPbackend, noir, N, messageBytes, witnessGenerationTimes, proofGenerationTimes, verificationTimes);
-            results['UltraPlonk'].witnessGenerationTimes = witnessGenerationTimes;
-            results['UltraPlonk'].proofGenerationTimes = proofGenerationTimes;
-            results['UltraPlonk'].verificationTimes = verificationTimes;
+            document.getElementById('ultraplonkRow').classList.remove('hidden');
+            await runBenchmark(UPbackend, noir, sampleSize, messageBytes, results.UltraPlonk);
         }
 
-
-        let resultText = '';
-        if (!useUltraHonk && !useUltraPlonk) {
-            resultText = 'No backend selected';
-        } else {
-            if (useUltraHonk) {
-                const uhWitnessAvg = results.UltraHonk.witnessGenerationTimes.reduce((a,b) => a + b, 0) / N;
-                const uhProofAvg = results.UltraHonk.proofGenerationTimes.reduce((a,b) => a + b, 0) / N;
-                const uhVerifyAvg = results.UltraHonk.verificationTimes.reduce((a,b) => a + b, 0) / N;
-                resultText += `UltraHonk - Witness: ${uhWitnessAvg.toFixed(2)}ms, Proof: ${uhProofAvg.toFixed(2)}ms, Verify: ${uhVerifyAvg.toFixed(2)}ms\n`;
-            }
-            if (useUltraPlonk) {
-                const upWitnessAvg = results.UltraPlonk.witnessGenerationTimes.reduce((a,b) => a + b, 0) / N;
-                const upProofAvg = results.UltraPlonk.proofGenerationTimes.reduce((a,b) => a + b, 0) / N;
-                const upVerifyAvg = results.UltraPlonk.verificationTimes.reduce((a,b) => a + b, 0) / N;
-                resultText += `UltraPlonk - Witness: ${upWitnessAvg.toFixed(2)}ms, Proof: ${upProofAvg.toFixed(2)}ms, Verify: ${upVerifyAvg.toFixed(2)}ms`;
-            }
+        // Update results table
+        if (useUltraHonk) {
+            updateResults('uh', results.UltraHonk, sampleSize);
         }
-        //Update result DOM
-        document.getElementById('result').textContent = resultText;
-        
+        if (useUltraPlonk) {
+            updateResults('up', results.UltraPlonk, sampleSize);
+        }
 
-        
+        // Show results
+        statusElement.classList.add('hidden');
+        resultsTable.classList.remove('hidden');
+        runButton.disabled = false;
 
     } catch (error) {
-
-
         console.error("An error occurred:", error);
+        statusElement.textContent = 'An error occurred. Check console for details.';
+        runButton.disabled = false;
     }
 }
 
-document.getElementById('runButton').addEventListener('click', run);
+function updateResults(prefix, results, sampleSize) {
+    const witnessAvg = results.witnessGenerationTimes.reduce((a,b) => a + b, 0) / sampleSize;
+    const proofAvg = results.proofGenerationTimes.reduce((a,b) => a + b, 0) / sampleSize;
+    const verifyAvg = results.verificationTimes.reduce((a,b) => a + b, 0) / sampleSize;
 
+    document.getElementById(`${prefix}-witness`).textContent = witnessAvg.toFixed(2);
+    document.getElementById(`${prefix}-proof`).textContent = proofAvg.toFixed(2);
+    document.getElementById(`${prefix}-verify`).textContent = verifyAvg.toFixed(2);
+}
 
-
-
-
-async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTimes, proofGenerationTimes, verificationTimes) {
-    // Add warm-up phase
+async function runBenchmark(backend, noir, N, messageBytes, results) {
+    // Warm-up phase
     const WARM_UP_ITERATIONS = 1;
-    console.log("Performing warm-up runs...");
+    statusElement.textContent = "Warming up...";
+    
     for (let i = 0; i < WARM_UP_ITERATIONS; i++) {
-        document.getElementById('result').textContent = `warming up ${i+1}/${WARM_UP_ITERATIONS}`;
         const keyPair = new KeyPair();
         const signatureObj = keyPair.sign(messageBytes);
         const publicKey = keyPair.get_public_key();
@@ -134,83 +122,48 @@ async function runBenchmark(backend, noir, N, messageBytes, witnessGenerationTim
         await backend.verifyProof(proof);
     }
 
-    console.log("Starting actual measurements...");
-    // Rest of the existing benchmark code
+    // Actual benchmark
     for (let i = 0; i < N; i++) {
-        document.getElementById('result').textContent = `running ${i+1}/${N}`;
-        // Create a keypair
+        statusElement.textContent = `Running benchmark ${i + 1}/${N}`;
+        
         const keyPair = new KeyPair();
-        // Sign the message
         const signatureObj = keyPair.sign(messageBytes);
         const publicKey = keyPair.get_public_key();
-
-
-        // Convert message hash and signature components to the format needed for the circuit
         const formatted_signature = formatSignature(signatureObj, publicKey);
 
-        console.log(messageBytes, signatureObj.r, signatureObj.s, publicKey);
-
-        //Record ram usage
-        if (performance.memory) {
-            console.log("Ram usage before witness generation", performance.memory.usedJSHeapSize / (1024 * 1024));
-          }
-
-        // Measure witness generation time
         const witnessStartTime = performance.now();
         const { witness } = await noir.execute(formatted_signature);
         const witnessEndTime = performance.now();
-        witnessGenerationTimes.push(witnessEndTime - witnessStartTime);
+        results.witnessGenerationTimes.push(witnessEndTime - witnessStartTime);
 
-        //Record ram usage
-        if (performance.memory) {
-            console.log("Ram usage before proof generation", performance.memory.usedJSHeapSize / (1024 * 1024));
-          }
-
-        // Measure proof generation time
         const proofStartTime = performance.now();
         const proof = await backend.generateProof(witness);
         const proofEndTime = performance.now();
-        proofGenerationTimes.push(proofEndTime - proofStartTime);
+        results.proofGenerationTimes.push(proofEndTime - proofStartTime);
 
-        //Record ram usage
-        if (performance.memory) {
-            console.log("Ram usage before verification", performance.memory.usedJSHeapSize / (1024 * 1024));
-          }
-
-        // Measure verification time
         const verifyStartTime = performance.now();
-        const isProofValid = await backend.verifyProof(proof);
+        await backend.verifyProof(proof);
         const verifyEndTime = performance.now();
-        verificationTimes.push(verifyEndTime - verifyStartTime);
-
-        //Record ram usage
-        if (performance.memory) {
-            console.log("Ram usage after verification", performance.memory.usedJSHeapSize / (1024 * 1024));
-          }
+        results.verificationTimes.push(verifyEndTime - verifyStartTime);
     }
 }
 
-
+// Keep existing helper functions
 function formatSignature(signatureObj, publicKey) {
     return {
         hashed_message: Array.from(signatureObj.message_hash).map(b => b.toString()),
-        pub_key_x: Array.from(publicKey.slice(1, 33)).map(b => b.toString()), // First byte is always 04, so skip it
-        pub_key_y: Array.from(publicKey.slice(33, 65)).map(b => b.toString()), // Take last 32 bytes for y
+        pub_key_x: Array.from(publicKey.slice(1, 33)).map(b => b.toString()),
+        pub_key_y: Array.from(publicKey.slice(33, 65)).map(b => b.toString()),
         signature: normalizeSignature([...Array.from(signatureObj.r).map(b => b.toString()),
-                ...Array.from(signatureObj.s).map(b => b.toString())]) // Normalize concatenated r and s
+                ...Array.from(signatureObj.s).map(b => b.toString())])
     };
 }
 
-
-    // If s > halfOrder, compute n - s to get the signature in the normalized form
 function normalizeSignature(signature) {
-
     const r = signature.slice(0, 32);
     const s = signature.slice(32);
     
     const sBigInt = s.reduce((acc, byte) => (acc << 8n) + BigInt(byte), 0n);
-    
-    // P256 curve order
     const n = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551n;
     const halfOrder = n >> 1n;
     
@@ -229,61 +182,4 @@ function normalizeSignature(signature) {
     return signature.map(String);
 }
 
-function toHexString(bytes) {
-    return Array.from(bytes)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-}
-
-function hexToBigInt(hex) {
-    return BigInt(hex.startsWith('0x') ? hex : '0x' + hex);     //all hex num should be prefixed by 0x but never hurts to check
-}
-
-function byteArrayToBigInt(byteArray) {
-    // Convert byte array to BigInt by shifting and combining bytes
-    return byteArray.reduce((acc, byte) => (acc << BigInt(8)) + BigInt(byte), BigInt(0));
-}
-
-function formatSignatureForCircom(signatureObj, publicKey) {
-    // Split the public key into x and y coordinates (remove '04' prefix and split remaining bytes)
-    const pubKeyHex = toHexString(new Uint8Array(publicKey));
-    const xCoord = pubKeyHex.slice(2, 66);
-    const yCoord = pubKeyHex.slice(66);
-    
-    // Convert to BigInt directly from byte arrays
-    const rBig = byteArrayToBigInt(new Uint8Array(signatureObj.r));
-    const sBig = byteArrayToBigInt(new Uint8Array(signatureObj.s));
-    const hashBig = byteArrayToBigInt(new Uint8Array(signatureObj.message_hash));
-    const pub0Big = hexToBigInt(xCoord);  // Keep hex for pubkey since we're already parsing it that way
-    const pub1Big = hexToBigInt(yCoord);
-    
-    // Convert to base 43 chunks
-    const rChunks = numberToBase43Chunks(rBig);
-    const sChunks = numberToBase43Chunks(sBig);
-    const hashChunks = numberToBase43Chunks(hashBig);
-    const pub0Chunks = numberToBase43Chunks(pub0Big);
-    const pub1Chunks = numberToBase43Chunks(pub1Big);
-    
-    return {
-        r: rChunks.map(n => n.toString()),
-        s: sChunks.map(n => n.toString()),
-        hash: hashChunks.map(n => n.toString()),
-        pub0: pub0Chunks.map(n => n.toString()),
-        pub1: pub1Chunks.map(n => n.toString())
-    };
-}
-
-
-function numberToBase43Chunks(num, numChunks = 6) {
-    const base = BigInt(2 ** 43);
-    let remaining = BigInt(num);
-    const chunks = [];
-    
-    for (let i = 0; i < numChunks; i++) {
-        chunks.push(remaining % base);
-        remaining = remaining / base;
-    }
-    
-    return chunks;
-}
-
+runButton.addEventListener('click', run);

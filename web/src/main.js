@@ -13,6 +13,7 @@ await Promise.all([
     initNoirC(fetch(noircPath))
 ]);
 
+let benchmarkResults = null;  // Store results globally so we can download them
 const runButton = document.getElementById('runButton');
 const statusElement = document.getElementById('status');
 const resultsTable = document.getElementById('resultsTable');
@@ -35,6 +36,7 @@ function getObjectSize(obj) {
     return new TextEncoder().encode(JSON.stringify(obj)).length;
 }
 
+
 async function run() {
     try {
         await init();
@@ -43,6 +45,7 @@ async function run() {
         runButton.disabled = true;
         statusElement.classList.remove('hidden');
         resultsTable.classList.add('hidden');
+        document.getElementById('downloadButton').classList.add('hidden');
 
         const message = "Hello world";
         const messageBytes = new TextEncoder().encode(message);
@@ -70,45 +73,54 @@ async function run() {
         const UHbackend = new UltraHonkBackend(program.bytecode, { threads: numThreads });
         const UPbackend = new UltraPlonkBackend(program.bytecode, { threads: numThreads });
 
-        const results = {
-            'UltraHonk': {
-                witnessGenerationTimes: [],
-                proofGenerationTimes: [], 
-                verificationTimes: [],
-                peakMemoryUsage: 0,
-                proofSize: 0
+        benchmarkResults = {
+            'metadata': {
+                'timestamp': new Date().toISOString(),
+                'sampleSize': sampleSize,
+                'numThreads': numThreads,
+                'message': message
             },
-            'UltraPlonk': {
-                witnessGenerationTimes: [],
-                proofGenerationTimes: [],
-                verificationTimes: [],
-                peakMemoryUsage: 0,
-                proofSize: 0
+            'results': {
+                'UltraHonk': {
+                    witnessGenerationTimes: [],
+                    proofGenerationTimes: [], 
+                    verificationTimes: [],
+                    peakMemoryUsage: 0,
+                    proofSize: 0
+                },
+                'UltraPlonk': {
+                    witnessGenerationTimes: [],
+                    proofGenerationTimes: [],
+                    verificationTimes: [],
+                    peakMemoryUsage: 0,
+                    proofSize: 0
+                }
             }
         };
 
         // Run benchmarks
         if (useUltraHonk) {
             document.getElementById('ultrahonkRow').classList.remove('hidden');
-            await runBenchmark(UHbackend, noir, sampleSize, messageBytes, results.UltraHonk);
+            await runBenchmark(UHbackend, noir, sampleSize, messageBytes, benchmarkResults.results.UltraHonk);
         }
 
         if (useUltraPlonk) {
             document.getElementById('ultraplonkRow').classList.remove('hidden');
-            await runBenchmark(UPbackend, noir, sampleSize, messageBytes, results.UltraPlonk);
+            await runBenchmark(UPbackend, noir, sampleSize, messageBytes, benchmarkResults.results.UltraPlonk);
         }
 
         // Update results table
         if (useUltraHonk) {
-            updateResults('uh', results.UltraHonk, sampleSize);
+            updateResults('uh', benchmarkResults.results.UltraHonk, sampleSize);
         }
         if (useUltraPlonk) {
-            updateResults('up', results.UltraPlonk, sampleSize);
+            updateResults('up', benchmarkResults.results.UltraPlonk, sampleSize);
         }
 
-        // Show results
+        // Show results and enable download
         statusElement.classList.add('hidden');
         resultsTable.classList.remove('hidden');
+        document.getElementById('downloadButton').classList.remove('hidden');
         runButton.disabled = false;
 
     } catch (error) {
@@ -238,4 +250,26 @@ function normalizeSignature(signature) {
     return signature.map(String);
 }
 
+
+function downloadResults() {
+    if (!benchmarkResults) {
+        console.error('No benchmark results available');
+        return;
+    }
+
+    const dataStr = JSON.stringify(benchmarkResults, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `benchmark-results-${new Date().toISOString()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Add event listeners
 runButton.addEventListener('click', run);
+document.getElementById('downloadButton').addEventListener('click', downloadResults);

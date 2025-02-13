@@ -81,6 +81,20 @@
         cursor: not-allowed;
       }
 
+      .button-group {
+  display: flex;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+#downloadButton {
+  background: #10b981;  /* Green color for distinction */
+}
+
+#downloadButton:hover {
+  background: #059669;
+}
+
       .results-table {
         width: 100%;
         border-collapse: collapse;
@@ -159,7 +173,10 @@
           </div>
         </div>
 
-        <button id="runButton">Run Benchmark</button>
+        <div class="button-group">
+          <button id="runButton">Run Benchmark</button>
+          <button id="downloadButton" class="hidden">Get Raw Data</button>
+        </div>
         
         <div id="status" class="status hidden">Running...</div>
 

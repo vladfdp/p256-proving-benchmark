@@ -16,6 +16,20 @@ await Promise.all([
 const runButton = document.getElementById('runButton');
 const statusElement = document.getElementById('status');
 const resultsTable = document.getElementById('resultsTable');
+const ramSupportNote = document.getElementById('ramSupport');
+
+// Check if performance.memory is available
+const hasMemoryAPI = performance && performance.memory;
+if (!hasMemoryAPI) {
+    ramSupportNote.classList.remove('hidden');
+}
+
+function getMemoryUsage() {
+    if (hasMemoryAPI) {
+        return performance.memory.usedJSHeapSize / (1024 * 1024); // Convert to MB
+    }
+    return null;
+}
 
 async function run() {
     try {
@@ -56,12 +70,14 @@ async function run() {
             'UltraHonk': {
                 witnessGenerationTimes: [],
                 proofGenerationTimes: [], 
-                verificationTimes: []
+                verificationTimes: [],
+                peakMemoryUsage: 0
             },
             'UltraPlonk': {
                 witnessGenerationTimes: [],
                 proofGenerationTimes: [],
-                verificationTimes: []
+                verificationTimes: [],
+                peakMemoryUsage: 0
             }
         };
 
@@ -104,6 +120,9 @@ function updateResults(prefix, results, sampleSize) {
     document.getElementById(`${prefix}-witness`).textContent = witnessAvg.toFixed(2);
     document.getElementById(`${prefix}-proof`).textContent = proofAvg.toFixed(2);
     document.getElementById(`${prefix}-verify`).textContent = verifyAvg.toFixed(2);
+    document.getElementById(`${prefix}-ram`).textContent = hasMemoryAPI 
+        ? results.peakMemoryUsage.toFixed(1)
+        : 'Unavailable';
 }
 
 async function runBenchmark(backend, noir, N, messageBytes, results) {
@@ -131,20 +150,41 @@ async function runBenchmark(backend, noir, N, messageBytes, results) {
         const publicKey = keyPair.get_public_key();
         const formatted_signature = formatSignature(signatureObj, publicKey);
 
+        // Track peak memory throughout the process
+        let currentMemory = getMemoryUsage();
+        if (currentMemory !== null) {
+            results.peakMemoryUsage = Math.max(results.peakMemoryUsage, currentMemory);
+        }
+
         const witnessStartTime = performance.now();
         const { witness } = await noir.execute(formatted_signature);
         const witnessEndTime = performance.now();
         results.witnessGenerationTimes.push(witnessEndTime - witnessStartTime);
+
+        currentMemory = getMemoryUsage();
+        if (currentMemory !== null) {
+            results.peakMemoryUsage = Math.max(results.peakMemoryUsage, currentMemory);
+        }
 
         const proofStartTime = performance.now();
         const proof = await backend.generateProof(witness);
         const proofEndTime = performance.now();
         results.proofGenerationTimes.push(proofEndTime - proofStartTime);
 
+        currentMemory = getMemoryUsage();
+        if (currentMemory !== null) {
+            results.peakMemoryUsage = Math.max(results.peakMemoryUsage, currentMemory);
+        }
+
         const verifyStartTime = performance.now();
         await backend.verifyProof(proof);
         const verifyEndTime = performance.now();
         results.verificationTimes.push(verifyEndTime - verifyStartTime);
+
+        currentMemory = getMemoryUsage();
+        if (currentMemory !== null) {
+            results.peakMemoryUsage = Math.max(results.peakMemoryUsage, currentMemory);
+        }
     }
 }
 

@@ -31,6 +31,10 @@ function getMemoryUsage() {
     return null;
 }
 
+function getObjectSize(obj) {
+    return new TextEncoder().encode(JSON.stringify(obj)).length;
+}
+
 async function run() {
     try {
         await init();
@@ -71,13 +75,15 @@ async function run() {
                 witnessGenerationTimes: [],
                 proofGenerationTimes: [], 
                 verificationTimes: [],
-                peakMemoryUsage: 0
+                peakMemoryUsage: 0,
+                proofSize: 0
             },
             'UltraPlonk': {
                 witnessGenerationTimes: [],
                 proofGenerationTimes: [],
                 verificationTimes: [],
-                peakMemoryUsage: 0
+                peakMemoryUsage: 0,
+                proofSize: 0
             }
         };
 
@@ -123,6 +129,7 @@ function updateResults(prefix, results, sampleSize) {
     document.getElementById(`${prefix}-ram`).textContent = hasMemoryAPI 
         ? results.peakMemoryUsage.toFixed(1)
         : 'Unavailable';
+    document.getElementById(`${prefix}-size`).textContent = (results.proofSize / 1024).toFixed(2);
 }
 
 async function runBenchmark(backend, noir, N, messageBytes, results) {
@@ -150,12 +157,12 @@ async function runBenchmark(backend, noir, N, messageBytes, results) {
         const publicKey = keyPair.get_public_key();
         const formatted_signature = formatSignature(signatureObj, publicKey);
 
-        // Track peak memory throughout the process
         let currentMemory = getMemoryUsage();
         if (currentMemory !== null) {
             results.peakMemoryUsage = Math.max(results.peakMemoryUsage, currentMemory);
         }
 
+        // Measure witness generation time
         const witnessStartTime = performance.now();
         const { witness } = await noir.execute(formatted_signature);
         const witnessEndTime = performance.now();
@@ -166,16 +173,25 @@ async function runBenchmark(backend, noir, N, messageBytes, results) {
             results.peakMemoryUsage = Math.max(results.peakMemoryUsage, currentMemory);
         }
 
+        // Measure proof generation time
         const proofStartTime = performance.now();
         const proof = await backend.generateProof(witness);
         const proofEndTime = performance.now();
         results.proofGenerationTimes.push(proofEndTime - proofStartTime);
+        
+        // Measure proof size (we only do this once because it's constant)
+        if (i === 0) {
+            // Convert proof to ArrayBuffer to get size
+            //const proofArray = await proof.serialize();
+            results.proofSize = getObjectSize(proof);
+        }
 
         currentMemory = getMemoryUsage();
         if (currentMemory !== null) {
             results.peakMemoryUsage = Math.max(results.peakMemoryUsage, currentMemory);
         }
 
+        // Measure proof verification time
         const verifyStartTime = performance.now();
         await backend.verifyProof(proof);
         const verifyEndTime = performance.now();

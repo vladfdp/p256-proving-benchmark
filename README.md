@@ -52,7 +52,8 @@ Contributions are very welcome! We'd love your help with:
 
 ## Sponsor
 
-*This project is supported by [Hylé](hyle.eu), the base layer for unchained applications.*
 <p align="left">
-  <a href="https://hyle.eu" target="_blank"> <img src="https://blog.hyle.eu/content/images/2024/10/Hyl-_widelogo_lightbg.png" width="15%", height="15%"/></a>
+  <a href="https://hyli.org" target="_blank"> <img src="https://github.com/hyli-org/hyli-assets/blob/main/Logos/Logo/HYLI_WORDMARK_ORANGE.png?raw=true" width="15%", height="15%"/></a>
 </p>
+
+*This project is supported by [Hyli](https://hyli.org), the new proof-powered L1 to build the next generation of apps, as part of the [Hyli grant program](https://github.com/hyli-org/hyli/blob/main/GRANTS.md).*
